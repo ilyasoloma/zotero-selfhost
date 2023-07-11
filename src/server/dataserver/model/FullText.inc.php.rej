@@ -1,0 +1,11 @@
+--- model/FullText.inc.php
++++ model/FullText.inc.php
+@@ -130,6 +130,8 @@ class Zotero_FullText {
+ 				$results->addSuccessful($i, $obj);
+ 			}
+ 			catch (Exception $e) {
++				Z_Core::debug($e->getMessage());
++
+ 				Zotero_DB::rollback();
+ 				
+ 				// If item key given, include that

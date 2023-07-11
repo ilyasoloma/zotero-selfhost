@@ -1,0 +1,13 @@
+--- controllers/ApiController.php
++++ controllers/ApiController.php
+@@ -679,8 +679,8 @@ class ApiController extends Controller {
+ 			$limits['rate'] = [
+ 				'logOnly' => false,
+ 				'bucket' => $this->userID . '_' . $_SERVER['REMOTE_ADDR'],
+-				'capacity' => 100,
+-				'replenishRate' => 10
++				'capacity' => 1000,
++				'replenishRate' => 100
+ 			];
+ 		}
+ 		// For anonymous request

@@ -1,0 +1,51 @@
+{
+    "translatorID"   : "fd0556d5-4c99-43d2-96d2-479284a0ae31",
+    "translatorType" : 4,
+    "label"          :"Wall Street Journal",
+    "creator"        :"Erik Hetzner, based on work by Matt Burton",
+    "target"         :"http://online\\.wsj\\.com/article/",
+    "minVersion"     :"2.0",
+    "maxVersion"     :"",
+    "priority"       :100,
+    "inRepository"   :true,
+    "lastUpdated"    :"2010-06-24 08:20:02"
+}
+
+//@framework@
+
+function detectWeb(doc, url) { return FW.detectWeb(doc, url); }
+
+function doWeb(doc, url) { return FW.doWeb(doc, url); }
+
+FW.Scraper({ 
+  itemType         : 'newspaperArticle',
+  publicationTitle : "wsj.com",
+  creators         : FW.PageText().match(/authors:'(.*?)'(?=,|})/, 1).
+                       replace("+", " ", "g").
+                       unescapeHTML().
+                       unescape().
+                       split(/,/).
+                       cleanAuthor("author"),
+  abstractNote     : FW.PageText().match(/bodyText:'(.*?)'(?=,|})/, 1).
+                       replace("+", " ", "g").
+                       unescapeHTML().
+                       unescape(),
+  date             : FW.PageText().match(/publicationDate:'(.*?)'(?=,|})/, 1).
+                       replace("+", " ", "g").
+                       unescapeHTML().
+                       unescape(),
+  title            : FW.PageText().match(/articleHeadline:'(.*?)'(?=,|})/, 1).
+                       replace("+", " ", "g").
+                       unescapeHTML().
+                       unescape().
+                       replace(/\\/, ""),
+  section          : FW.PageText().match(/articleType:'(.*?)'(?=,|})/, 1).
+                       replace("+", " ", "g").
+                       unescapeHTML().
+                       unescape(),
+  attachments      : {
+    url            : FW.Url(),
+    type           : "text/html",
+    title          : "Wall Street Journal Snapshot"
+  }
+});

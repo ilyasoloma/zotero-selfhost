@@ -1,0 +1,19 @@
+//
+// Tag list
+// --------------------------------------------------
+
+.tag-selector-list {
+	.tag {
+		&:focus {
+			.keyboard & {
+				outline-offset: -$outline-width;
+				@include hairline-disabled(top);
+			}
+		}
+	}
+
+	.icon-circle {
+		margin-left: 2px;
+		margin-right: $space-xs + 2px;
+	}
+}
