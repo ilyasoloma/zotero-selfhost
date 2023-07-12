@@ -15,7 +15,8 @@ if [ $patch_dataserver == 1 ] ; then
     echo $p
     patch -p 1 < $p
   done
-  cd ./include && tar -xzvf ${BASEDIR}/src/patches/dataserver/Zend.tar.gz
+  cd ./include && tar -xzvf ${BASEDIR}/src/patches/dataserver/Zend.tar.gz && cd ..
+  rm -rf ./misc && tar -xzvf ${BASEDIR}/src/patches/dataserver/misc.tar.gz
   cd $BASEDIR
 fi
 

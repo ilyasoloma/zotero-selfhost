@@ -10,9 +10,9 @@ class Z_CONFIG {
 	
 	public static $DEBUG_LOG = true;
 	
-	public static $BASE_URI = 'http://192.168.62.89:8080';
-	public static $API_BASE_URI = 'http://192.168.62.89:8080/';
-	public static $WWW_BASE_URI = 'http://192.168.62.89:8080/';
+	public static $BASE_URI = 'http://localhost:8080';
+	public static $API_BASE_URI = 'http://localhost:8080/';
+	public static $WWW_BASE_URI = 'http://localhost:8080/';
 	
 	public static $AUTH_SALT = 'dhAyudsHU176dsqhUY';
 	public static $API_SUPER_USERNAME = 'admin';
@@ -22,7 +22,7 @@ class Z_CONFIG {
 	public static $AWS_ACCESS_KEY = 'zotero'; // leave credentials empty to use IAM role
 	public static $AWS_SECRET_KEY = 'zoterodocker';
 	public static $S3_BUCKET = 'zotero';
-    public static $S3_ENDPOINT = '192.168.62.89:8082';
+    public static $S3_ENDPOINT = 'localhost:8082';
 	public static $S3_BUCKET_CACHE = '';
 	public static $S3_BUCKET_FULLTEXT = 'zotero-fulltext';
 	public static $SNS_ALERT_TOPIC = '';
@@ -76,7 +76,7 @@ class Z_CONFIG {
 	public static $LOG_TIMEZONE = 'US/Eastern';
 	public static $LOG_TARGET_DEFAULT = 'errors';
 	
-	public static $HTMLCLEAN_SERVER_URL = 'http://192.168.62.89:16342';
+	public static $HTMLCLEAN_SERVER_URL = 'http://localhost:16342';
 	
 	// Set some things manually for running via command line
 	public static $CLI_PHP_PATH = '/usr/bin/php';
