@@ -1,0 +1,3 @@
+import type { XYCoord } from '../../../interfaces.js';
+import type { AnyAction } from 'redux';
+export declare function setClientOffset(clientOffset: XYCoord | null | undefined, sourceClientOffset?: XYCoord | null | undefined): AnyAction;

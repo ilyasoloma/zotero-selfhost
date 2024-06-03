@@ -1,0 +1,10 @@
+node_modules
+/lib
+/sass
+/build
+/data
+/cert
+/_*
+.DS_Store
+coverage
+.nyc_output

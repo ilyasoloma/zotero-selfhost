@@ -1,0 +1,2 @@
+import type { Action, DragDropManager, BeginDragPayload, BeginDragOptions, Identifier } from '../../interfaces.js';
+export declare function createBeginDrag(manager: DragDropManager): (sourceIds?: Identifier[], options?: BeginDragOptions) => Action<BeginDragPayload> | undefined;

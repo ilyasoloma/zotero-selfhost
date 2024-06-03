@@ -1,0 +1,35 @@
+{
+    "translatorID"   : "f013921c-ede8-4284-a963-45728b2be258",
+    "translatorType" : 4,
+    "label"          : "The Atlantic Monthly",
+    "creator"        : "",
+    "target"         : "http://www.theatlantic.com/",
+    "minVersion"     : "2.0",
+    "maxVersion"     : "",
+    "priority"       : 100,
+    "inRepository"   : false,
+    "lastUpdated"    : "2009-01-08 08:19:07"
+}
+
+//@framework@
+
+function detectWeb(doc, url) { return FW.detectWeb(doc, url); }
+function doWeb(doc, url) { return FW.doWeb(doc, url); }
+
+FW.Scraper({
+  detect           : FW.Url().match(/http:\/\/www\.theatlantic\.com\/magazine\//),
+  title            : FW.Xpath('//head/meta[@name="title"]/@content').text().
+                       remove(/- Magazine - The Atlantic/).
+                       trim(),
+  itemType         : "magazineArticle",
+  publicationTitle : "The Atlantic Monthly",
+  date             : FW.Xpath('//div[@class="articleHead"]/h4[@class="issueDetails"]/a[@class="issueTitle"]').text().
+                       match(/([\/A-Za-z\/]+ [0-9]+)/, 1),
+  creators         : FW.Xpath('//div[@class="post"]/h5[@class="authors"]/a[@class="author"]').text().
+                       cleanAuthor("author"),
+  attachments      : {
+    url            : FW.Url(),
+    type           : "text/html",
+    title          : "Atlantic Snapshot"
+  }
+});

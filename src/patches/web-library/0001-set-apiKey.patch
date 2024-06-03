@@ -1,0 +1,17 @@
+diff --git a/src/html/index.html b/src/html/index.html
+index 2bff8704..2b0ec3d7 100644
+--- a/src/html/index.html
++++ b/src/html/index.html
+@@ -16,9 +16,9 @@
+ 	<div id="zotero-web-library"></div>
+ 	<script type="application/json" id="zotero-web-library-config">
+ 		{
+-			"userSlug": "vexling",
+-			"userId": "2769109",
+-			"apiKey": "ZEQMCDOAHtM2RSaktjn7FEev"
++			"userSlug": "admin",
++			"userId": "1",
++			"apiKey": "3wd9nUlEzT3LvgnbYSJiGjbt"
+ 		}
+ 	</script>
+ 	<script type="application/json" id="zotero-web-library-menu-config">

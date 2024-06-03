@@ -1,0 +1,5 @@
+export * as NativeTypes from './NativeTypes.js';
+import type { BackendFactory } from 'dnd-core';
+export type { HTML5BackendContext, HTML5BackendOptions } from './types.js';
+export { getEmptyImage } from './getEmptyImage.js';
+export declare const HTML5Backend: BackendFactory;
