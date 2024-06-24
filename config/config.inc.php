@@ -22,7 +22,7 @@ class Z_CONFIG {
 	public static $AWS_ACCESS_KEY = 'zotero'; // leave credentials empty to use IAM role
 	public static $AWS_SECRET_KEY = 'zoterodocker';
 	public static $S3_BUCKET = 'zotero';
-    public static $S3_ENDPOINT = '192.168.62.111:8082';
+        public static $S3_ENDPOINT = '192.168.62.111:8082';
 	public static $S3_BUCKET_CACHE = '';
 	public static $S3_BUCKET_FULLTEXT = 'zotero-fulltext';
 	public static $SNS_ALERT_TOPIC = '';
@@ -62,8 +62,8 @@ class Z_CONFIG {
 	
 	public static $GLOBAL_ITEMS_URL = '';
 	
-	public static $ATTACHMENT_PROXY_URL = "https://files.example.com/";
-	public static $ATTACHMENT_PROXY_SECRET = "";
+	public static $ATTACHMENT_PROXY_URL = "http://192.168.62.111:8084";
+	public static $ATTACHMENT_PROXY_SECRET = 'zoterodocker';
 	
 	public static $STATSD_ENABLED = false;
 	public static $STATSD_PREFIX = "";

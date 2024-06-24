@@ -1380,11 +1380,6 @@ class Zotero_Item extends Zotero_DataObject {
 							VALUES (?,?,?,?,?,?,?,?)";
 					$isEmbeddedImage = $this->attachmentLinkMode == 'embedded_image';
 					
-					// TEMP
-					if ($isEmbeddedImage && Zotero_Libraries::getType($this->_libraryID) != 'user') {
-						throw new Exception("Can only add embedded-image attachment in user library");
-					}
-					
 					$parent = $this->getSource();
 					if ($parent) {
 						$parentItem = Zotero_Items::get($this->_libraryID, $parent);
@@ -2512,7 +2507,7 @@ class Zotero_Item extends Zotero_DataObject {
 		if ($this->isNote()) {
 			return $this->numAttachments($includeTrashed);
 		}
-		if ($this->isImportedAttachment()) {
+		if ($this->isPDFAttachment()) {
 			return $this->numAnnotations($includeTrashed);
 		}
 		throw new Exception("Invalid item type");
@@ -3529,7 +3524,21 @@ class Zotero_Item extends Zotero_DataObject {
 				// Check annotationText length
 				if ($field == 'text' && strlen($val) > Zotero_Items::$maxAnnotationTextLength) {
 					throw new Exception(
-						"Annotation text '" . mb_substr($val, 0, 50) . "…' is too long",
+						"Annotation text '" . mb_substr($val, 0, 50) . "…' is too long for "
+							. "attachment " . $this->getSourceKey(),
+						// TEMP: Return 400 until client can handle a specified annotation item,
+						// either by selecting the parent attachment or displaying annotation items
+						// in the items list
+						//Z_ERROR_FIELD_TOO_LONG
+						Z_ERROR_INVALID_INPUT
+					);
+				}
+				// Check annotationPageLabel length
+				if ($field == 'pageLabel' && strlen($val) > Zotero_Items::$maxAnnotationPageLabelLength) {
+					throw new Exception(
+						// TODO: Restore once output isn't HTML-encoded
+						//"Annotation page label '" . mb_substr($val, 0, 50) . "…' is too long",
+						"Annotation page label is too long for attachment " . $this->getSourceKey(),
 						// TEMP: Return 400 until client can handle a specified annotation item,
 						// either by selecting the parent attachment or displaying annotation items
 						// in the items list
@@ -3542,7 +3551,7 @@ class Zotero_Item extends Zotero_DataObject {
 					throw new Exception(
 						// TODO: Restore once output isn't HTML-encoded
 						//"Annotation position '" . mb_substr($val, 0, 50) . "…' is too long",
-						"Annotation position is too long",
+						"Annotation position is too long for attachment " . $this->getSourceKey(),
 						// TEMP: Return 400 until client can handle a specified annotation item,
 						// either by selecting the parent attachment or displaying annotation items
 						// in the items list
@@ -4077,7 +4086,7 @@ class Zotero_Item extends Zotero_DataObject {
 		else {
 			if ($this->isNote()
 					// Annotations depend on note permissions
-					|| ($this->isImportedAttachment() && $permissions->canAccess($this->libraryID, 'notes'))) {
+					|| ($this->isPDFAttachment() && $permissions->canAccess($this->libraryID, 'notes'))) {
 				$numChildren = $this->numChildren();
 			}
 			else {
@@ -4162,7 +4171,7 @@ class Zotero_Item extends Zotero_DataObject {
 		if (false && $cached) {
 			if ($isRegularItem
 					|| $this->isNote()
-					|| $this->isImportedAttachment()) {
+					|| $this->isPDFAttachment()) {
 				$cached['meta']->numChildren = $numChildren;
 			}
 			
@@ -4292,7 +4301,7 @@ class Zotero_Item extends Zotero_DataObject {
 		
 		if ($isRegularItem
 				|| $this->isNote()
-				|| $this->isImportedAttachment()) {
+				|| $this->isPDFAttachment()) {
 			$json['meta']->numChildren = $numChildren;
 		}
 		
@@ -5026,3 +5035,4 @@ class Zotero_Item extends Zotero_DataObject {
 	}
 }
 ?>
+

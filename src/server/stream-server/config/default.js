@@ -5,7 +5,7 @@ var config = {
 	dev: false,
 	logLevel: 'info',
 	hostname: os.hostname().split('.')[0],
-	httpPort: 8080,
+	httpPort: 8085,
 	proxyProtocol: false,
 	https: false,
 	trustedProxies: [],
@@ -16,7 +16,7 @@ var config = {
 		host: '',
 		prefix: ''
 	},
-	apiURL: 'https://api.zotero.org/',
+	apiURL: 'https://192.168.62.111:8080/',
 	apiVersion: 3,
 	apiRequestHeaders: {},
 	longStackTraces: false,

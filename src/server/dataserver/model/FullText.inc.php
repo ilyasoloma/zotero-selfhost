@@ -26,7 +26,7 @@
 
 // Todo: move S3 code outside of transactions
 class Zotero_FullText {
-	private static $minFileSizeStandardIA = 75 * 1024;
+	private static $minFileSizeStandardIA = 128 * 1024;
 	private static $elasticsearchType = "item_fulltext";
 	public static $metadata = ['indexedChars', 'totalChars', 'indexedPages', 'totalPages'];
 	

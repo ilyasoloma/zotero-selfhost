@@ -28,6 +28,8 @@ namespace Zotero;
 
 class Schema {
 	private static $schema;
+	private static $version;
+	private static $versionCacheKey = "schemaVersion";
 	
 	
 	public static function init() {
@@ -40,6 +42,25 @@ class Schema {
 			self::init();
 		}
 		return self::$schema;
+	}
+	
+	
+	public static function getVersion() {
+		if (self::$version) {
+			return self::$version;
+		}
+		$version = \Z_Core::$MC->get(self::$versionCacheKey);
+		if ($version) {
+			self::$version = $version;
+			return $version;
+		}
+		// Get schema version from DB
+		$version = (int) \Zotero_DB::valueQuery(
+			"SELECT value FROM settings WHERE name='schemaVersion'"
+		);
+		self::$version = $version;
+		\Z_Core::$MC->set(self::$versionCacheKey, $version, 60);
+		return $version;
 	}
 	
 	
@@ -284,6 +305,8 @@ class Schema {
 		}
 		
 		\Zotero_DB::commit();
+		
+		\Z_Core::$MC->delete(self::$versionCacheKey);
 		
 		return true;
 	}

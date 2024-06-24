@@ -128,7 +128,7 @@ CREATE TABLE `itemAttachments` (
 CREATE TABLE `itemAnnotations` (
   `itemID` int(10) unsigned NOT NULL,
   `parentItemID` int(10) unsigned NOT NULL,
-  `type` enum('highlight','note','image', 'ink') CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `type` enum('highlight','note','image', 'ink', 'underline', 'text') CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   `authorName` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL DEFAULT '',
   `text` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL,
   `comment` mediumtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci NOT NULL,

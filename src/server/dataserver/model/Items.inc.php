@@ -41,6 +41,7 @@ class Zotero_Items {
 	
 	public static $maxDataValueLength = 65535;
 	public static $maxAnnotationTextLength = 25000;
+	public static $maxAnnotationPageLabelLength = 50;
 	public static $maxAnnotationPositionLength = 65535;
 	
 	/**
@@ -1692,7 +1693,7 @@ class Zotero_Items {
 				case 'itemType':
 				case 'deleted':
 				case 'inPublications':
-					continue;
+					continue 2;
 				
 				case 'parentItem':
 					$item->setSourceKey($val);
@@ -1796,7 +1797,7 @@ class Zotero_Items {
 				case 'attachments':
 				case 'notes':
 					if (!$val) {
-						continue;
+						continue 2;
 					}
 					$twoStage = true;
 					break;
@@ -1827,14 +1828,14 @@ class Zotero_Items {
 				
 				case 'md5':
 					if (!$val) {
-						continue;
+						continue 2;
 					}
 					$item->attachmentStorageHash = $val;
 					break;
 					
 				case 'mtime':
 					if (!$val) {
-						continue;
+						continue 2;
 					}
 					$item->attachmentStorageModTime = $val;
 					break;
@@ -1906,7 +1907,7 @@ class Zotero_Items {
 				switch ($key) {
 					case 'attachments':
 						if (!$val) {
-							continue;
+							continue 2;
 						}
 						foreach ($val as $attachmentJSON) {
 							$childItem = new Zotero_Item;
@@ -1923,7 +1924,7 @@ class Zotero_Items {
 					
 					case 'notes':
 						if (!$val) {
-							continue;
+							continue 2;
 						}
 						$noteItemTypeID = Zotero_ItemTypes::getID("note");
 						
@@ -2600,3 +2601,4 @@ class Zotero_Items {
 }
 
 Zotero_Items::init();
+
