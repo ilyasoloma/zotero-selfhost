@@ -51,11 +51,11 @@ class Z_CONFIG {
 	);
 	
 	public static $TRANSLATION_SERVERS = [
-		"http://translation1.localdomain:1969"
+		"http://192.168.62.111:1969"
 	];
 	
 	public static $CITATION_SERVERS = array(
-		"citeserver1.localdomain:8080", "citeserver2.localdomain:8080"
+		"192.168.62.111:8085", "192.168.62.111:8085"
 	);
 	
 	public static $SEARCH_HOSTS = ['elasticsearch'];

@@ -848,7 +848,7 @@ class Zotero_Item extends Zotero_DataObject {
 	
 	
 	public function isPDFAttachment() {
-		if (!$this->isAttachment()) return false;
+		if (!$this->isFileAttachment()) return false;
 		return $this->attachmentContentType == 'application/pdf';
 	}
 	
@@ -1467,6 +1467,11 @@ class Zotero_Item extends Zotero_DataObject {
 							"'annotationText' can only be set for highlight annotations",
 							Z_ERROR_INVALID_INPUT
 						);
+					}
+					
+					// Default color to yellow if not specified
+					if (!$this->annotationColor) {
+						$this->annotationColor = Zotero_Items::$defaultAnnotationColor;
 					}
 					
 					$color = $this->annotationColor;
@@ -3522,16 +3527,8 @@ class Zotero_Item extends Zotero_DataObject {
 					$val = '';
 				}
 				// Check annotationText length
-				if ($field == 'text' && strlen($val) > Zotero_Items::$maxAnnotationTextLength) {
-					throw new Exception(
-						"Annotation text '" . mb_substr($val, 0, 50) . "…' is too long for "
-							. "attachment " . $this->getSourceKey(),
-						// TEMP: Return 400 until client can handle a specified annotation item,
-						// either by selecting the parent attachment or displaying annotation items
-						// in the items list
-						//Z_ERROR_FIELD_TOO_LONG
-						Z_ERROR_INVALID_INPUT
-					);
+				if ($field == 'text') {
+					$val = mb_substr($val, 0, Zotero_Items::$maxAnnotationTextLength);
 				}
 				// Check annotationPageLabel length
 				if ($field == 'pageLabel' && strlen($val) > Zotero_Items::$maxAnnotationPageLabelLength) {
@@ -4574,7 +4571,7 @@ class Zotero_Item extends Zotero_DataObject {
 				if ($tags) {
 					foreach ($tags as $tag) {
 						// Skip empty tags that are still in the database
-						if (!trim($tag->name)) {
+						if (!trim($tag->name) === "") {
 							continue;
 						}
 						$t = array(
