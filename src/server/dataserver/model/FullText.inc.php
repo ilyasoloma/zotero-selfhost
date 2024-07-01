@@ -26,7 +26,7 @@
 
 // Todo: move S3 code outside of transactions
 class Zotero_FullText {
-	private static $minFileSizeStandardIA = 128 * 1024;
+	private static $minFileSizeStandardIA = 75 * 1024;
 	private static $elasticsearchType = "item_fulltext";
 	public static $metadata = ['indexedChars', 'totalChars', 'indexedPages', 'totalPages'];
 	
@@ -78,8 +78,8 @@ class Zotero_FullText {
 			'Bucket' => Z_CONFIG::$S3_BUCKET_FULLTEXT,
 			'Key' => $libraryID . "/" . $key,
 			'Body' => $json,
-			'ContentType' => 'application/gzip',
-			'StorageClass' => strlen($json) < self::$minFileSizeStandardIA ? 'STANDARD' : 'STANDARD_IA'
+			'ContentType' => 'application/gzip'
+			//'StorageClass' => strlen($json) < self::$minFileSizeStandardIA ? 'STANDARD' : 'STANDARD_IA'
 		]);
 		StatsD::timing("s3.fulltext.put", (microtime(true) - $start) * 1000);
 		
@@ -130,8 +130,6 @@ class Zotero_FullText {
 				$results->addSuccessful($i, $obj);
 			}
 			catch (Exception $e) {
-				Z_Core::debug($e->getMessage());
-
 				Zotero_DB::rollback();
 				
 				// If item key given, include that
@@ -226,9 +224,6 @@ class Zotero_FullText {
 	 * @return {Array<String>|null} An array of item keys, or null if no results
 	 */
 	public static function searchInLibrary($libraryID, $searchText) {
-		if (! Z_CONFIG::$ELASTICSEARCH_ENABLED) {
-			return null;
-		}
 		$params = [
 			'index' => self::$elasticsearchType . "_index",
 			'type' => self::$elasticsearchType,

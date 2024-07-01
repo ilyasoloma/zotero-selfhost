@@ -30,8 +30,9 @@ require_once 'APITests.inc.php';
 require_once 'include/api3.inc.php';
 
 class AnnotationTest extends APITests {
-	private static $attachmentKey = null;
-	private static $attachmentJSON = null;
+	private static $pdfAttachmentKey = null;
+	private static $epubAttachmentKey = null;
+	private static $snapshotAttachmentKey = null;
 	
 	public static function setUpBeforeClass(): void {
 		parent::setUpBeforeClass();
@@ -39,14 +40,32 @@ class AnnotationTest extends APITests {
 		API::groupClear(self::$config['ownedPrivateGroupID']);
 		
 		$key = API::createItem("book", false, null, 'key');
-		self::$attachmentJSON = API::createAttachmentItem(
+		$json = API::createAttachmentItem(
 			"imported_url",
 			['contentType' => 'application/pdf'],
 			$key,
 			null,
 			'jsonData'
 		);
-		self::$attachmentKey = self::$attachmentJSON['key'];
+		self::$pdfAttachmentKey = $json['key'];
+		
+		$json = API::createAttachmentItem(
+			"imported_url",
+			['contentType' => 'application/epub+zip'],
+			$key,
+			null,
+			'jsonData'
+		);
+		self::$epubAttachmentKey = $json['key'];
+		
+		$json = API::createAttachmentItem(
+			"imported_url",
+			['contentType' => 'text/html'],
+			$key,
+			null,
+			'jsonData'
+		);
+		self::$snapshotAttachmentKey = $json['key'];
 	}
 	
 	public static function tearDownAfterClass(): void {
@@ -59,7 +78,7 @@ class AnnotationTest extends APITests {
 	public function test_should_save_a_highlight_annotation() {
 		$json = [
 			'itemType' => 'annotation',
-			'parentItem' => self::$attachmentKey,
+			'parentItem' => self::$pdfAttachmentKey,
 			'annotationType' => 'highlight',
 			'annotationAuthorName' => 'First Last',
 			'annotationText' => 'This is highlighted text.',
@@ -96,10 +115,38 @@ class AnnotationTest extends APITests {
 	}
 	
 	
+	public function test_should_save_a_highlight_annotation_with_parentItem_specified_last() {
+		$json = [
+			'itemType' => 'annotation',
+			'annotationType' => 'highlight',
+			'annotationAuthorName' => 'First Last',
+			'annotationText' => 'This is highlighted text.',
+			'annotationColor' => '#ff8c19',
+			'annotationPageLabel' => '10',
+			'annotationSortIndex' => '00015|002431|00000',
+			'annotationPosition' => json_encode([
+				'pageIndex' => 123,
+				'rects' => [
+					[314.4, 412.8, 556.2, 609.6]
+				]
+			]),
+			'parentItem' => self::$pdfAttachmentKey,
+		];
+		
+		$response = API::userPost(
+			self::$config['userID'],
+			"items",
+			json_encode([$json]),
+			["Content-Type: application/json"]
+		);
+		$this->assert200ForObject($response);
+	}
+	
+	
 	public function test_should_save_a_note_annotation() {
 		$json = [
 			'itemType' => 'annotation',
-			'parentItem' => self::$attachmentKey,
+			'parentItem' => self::$pdfAttachmentKey,
 			'annotationType' => 'note',
 			'annotationComment' => 'This is a comment.',
 			'annotationSortIndex' => '00015|002431|00000',
@@ -134,7 +181,7 @@ class AnnotationTest extends APITests {
 	public function test_should_reject_empty_annotationText_for_image_annotation() {
 		$json = [
 			'itemType' => 'annotation',
-			'parentItem' => self::$attachmentKey,
+			'parentItem' => self::$pdfAttachmentKey,
 			'annotationType' => 'image',
 			'annotationText' => '',
 			'annotationSortIndex' => '00015|002431|00000',
@@ -151,14 +198,14 @@ class AnnotationTest extends APITests {
 			json_encode([$json]),
 			["Content-Type: application/json"]
 		);
-		$this->assert400ForObject($response, "'annotationText' can only be set for highlight annotations");
+		$this->assert400ForObject($response, "'annotationText' can only be set for highlight and underline annotations");
 	}
 	
 	
 	public function test_should_reject_non_empty_annotationText_for_image_annotation() {
 		$json = [
 			'itemType' => 'annotation',
-			'parentItem' => self::$attachmentKey,
+			'parentItem' => self::$pdfAttachmentKey,
 			'annotationType' => 'image',
 			'annotationText' => 'test',
 			'annotationSortIndex' => '00015|002431|00000',
@@ -175,7 +222,7 @@ class AnnotationTest extends APITests {
 			json_encode([$json]),
 			["Content-Type: application/json"]
 		);
-		$this->assert400ForObject($response, "'annotationText' can only be set for highlight annotations");
+		$this->assert400ForObject($response, "'annotationText' can only be set for highlight and underline annotations");
 	}
 	
 	
@@ -183,7 +230,7 @@ class AnnotationTest extends APITests {
 		// Create annotation
 		$json = [
 			'itemType' => 'annotation',
-			'parentItem' => self::$attachmentKey,
+			'parentItem' => self::$pdfAttachmentKey,
 			'annotationType' => 'image',
 			'annotationSortIndex' => '00015|002431|00000',
 			'annotationPosition' => json_encode([
@@ -223,7 +270,7 @@ class AnnotationTest extends APITests {
 		];
 		$json = [
 			'itemType' => 'annotation',
-			'parentItem' => self::$attachmentKey,
+			'parentItem' => self::$pdfAttachmentKey,
 			'annotationType' => 'ink',
 			'annotationColor' => '#ff8c19',
 			'annotationPageLabel' => '10',
@@ -257,7 +304,7 @@ class AnnotationTest extends APITests {
 	public function test_should_not_include_authorName_if_empty() {
 		$json = [
 			'itemType' => 'annotation',
-			'parentItem' => self::$attachmentKey,
+			'parentItem' => self::$pdfAttachmentKey,
 			'annotationType' => 'highlight',
 			'annotationText' => 'This is highlighted text.',
 			'annotationColor' => '#ff8c19',
@@ -287,7 +334,7 @@ class AnnotationTest extends APITests {
 		// Create highlight annotation
 		$json = [
 			'itemType' => 'annotation',
-			'parentItem' => self::$attachmentKey,
+			'parentItem' => self::$pdfAttachmentKey,
 			'annotationType' => 'highlight',
 			'annotationText' => 'This is highlighted text.',
 			'annotationSortIndex' => '00015|002431|00000',
@@ -327,7 +374,7 @@ class AnnotationTest extends APITests {
 	public function test_should_update_annotation_comment() {
 		$json = [
 			'itemType' => 'annotation',
-			'parentItem' => self::$attachmentKey,
+			'parentItem' => self::$pdfAttachmentKey,
 			'annotationType' => 'highlight',
 			'annotationText' => 'This is highlighted text.',
 			'annotationComment' => '',
@@ -369,7 +416,7 @@ class AnnotationTest extends APITests {
 	public function test_should_update_annotation_text() {
 		$json = [
 			'itemType' => 'annotation',
-			'parentItem' => self::$attachmentKey,
+			'parentItem' => self::$pdfAttachmentKey,
 			'annotationType' => 'highlight',
 			'annotationText' => 'This is highlighted text.',
 			'annotationComment' => '',
@@ -411,7 +458,7 @@ class AnnotationTest extends APITests {
 	public function test_should_clear_annotation_fields() {
 		$json = [
 			'itemType' => 'annotation',
-			'parentItem' => self::$attachmentKey,
+			'parentItem' => self::$pdfAttachmentKey,
 			'annotationType' => 'highlight',
 			'annotationText' => 'This is highlighted text.',
 			'annotationComment' => 'This is a comment.',
@@ -454,6 +501,35 @@ class AnnotationTest extends APITests {
 	}
 	
 	
+	public function test_should_reject_long_page_label() {
+		$label = \Zotero_Utilities::randomString(51);
+		$json = [
+			'itemType' => 'annotation',
+			'parentItem' => self::$pdfAttachmentKey,
+			'annotationType' => 'ink',
+			'annotationSortIndex' => '00015|002431|00000',
+			'annotationColor' => '#ff8c19',
+			'annotationPageLabel' => $label,
+			'annotationPosition' => [
+				'paths' => []
+			]
+		];
+		$response = API::userPost(
+			self::$config['userID'],
+			"items",
+			json_encode([$json]),
+			["Content-Type: application/json"]
+		);
+		// TEMP: See note in Item.inc.php
+		//$this->assert413ForObject(
+		$this->assert400ForObject(
+			// TODO: Restore once output isn't HTML-encoded
+			//$response, "Annotation page label '" . mb_substr($label, 0, 50) . "…' is too long", 0
+			$response, "Annotation page label is too long for attachment " . self::$pdfAttachmentKey, 0
+		);
+	}
+	
+	
 	public function test_should_reject_long_position() {
 		$positionJSON = json_encode([
 			'pageIndex' => 123,
@@ -463,7 +539,7 @@ class AnnotationTest extends APITests {
 		]);
 		$json = [
 			'itemType' => 'annotation',
-			'parentItem' => self::$attachmentKey,
+			'parentItem' => self::$pdfAttachmentKey,
 			'annotationType' => 'ink',
 			'annotationSortIndex' => '00015|002431|00000',
 			'annotationColor' => '#ff8c19',
@@ -480,17 +556,17 @@ class AnnotationTest extends APITests {
 		$this->assert400ForObject(
 			// TODO: Restore once output isn't HTML-encoded
 			//$response, "Annotation position '" . mb_substr($positionJSON, 0, 50) . "…' is too long", 0
-			$response, "Annotation position is too long", 0
+			$response, "Annotation position is too long for attachment " . self::$pdfAttachmentKey, 0
 		);
 	}
 	
 	
-	public function test_should_reject_long_text() {
+	public function test_should_truncate_long_text() {
 		$json = [
 			'itemType' => 'annotation',
-			'parentItem' => self::$attachmentKey,
+			'parentItem' => self::$pdfAttachmentKey,
 			'annotationType' => 'highlight',
-			'annotationText' => str_repeat('a', 50000),
+			'annotationText' => str_repeat("这是一个测试。", 5000),
 			'annotationSortIndex' => '00015|002431|00000',
 			'annotationColor' => '#ff8c19',
 			'annotationPosition' => json_encode([
@@ -506,18 +582,17 @@ class AnnotationTest extends APITests {
 			json_encode([$json]),
 			["Content-Type: application/json"]
 		);
-		// TEMP: See note in Item.inc.php
-		//$this->assert413ForObject(
-		$this->assert400ForObject(
-			$response, "Annotation text '" . str_repeat('a', 50) . "…' is too long", 0
-		);
+		$this->assert200ForObject($response);
+		$json = API::getJSONFromResponse($response);
+		$jsonData = $json['successful'][0]['data'];
+		$this->assertEquals(7500, mb_strlen($jsonData['annotationText']));
 	}
 	
 	
 	public function test_should_reject_invalid_sortIndex() {
 		$json = [
 			'itemType' => 'annotation',
-			'parentItem' => self::$attachmentKey,
+			'parentItem' => self::$pdfAttachmentKey,
 			'annotationType' => 'highlight',
 			'annotationText' => '',
 			'annotationSortIndex' => '0000',
@@ -541,10 +616,37 @@ class AnnotationTest extends APITests {
 	}
 	
 	
+	public function test_should_use_default_yellow_if_color_not_specified() {
+		$json = [
+			'itemType' => 'annotation',
+			'parentItem' => self::$pdfAttachmentKey,
+			'annotationType' => 'highlight',
+			'annotationText' => '',
+			'annotationSortIndex' => '00015|002431|00000',
+			'annotationPosition' => json_encode([
+				'pageIndex' => 123,
+				'rects' => [
+					[314.4, 412.8, 556.2, 609.6]
+				]
+			])
+		];
+		$response = API::userPost(
+			self::$config['userID'],
+			"items",
+			json_encode([$json]),
+			["Content-Type: application/json"]
+		);
+		$this->assert200ForObject($response);
+		$json = API::getJSONFromResponse($response);
+		$jsonData = $json['successful'][0]['data'];
+		$this->assertEquals('#ffd400', $jsonData['annotationColor']);
+	}
+	
+	
 	public function test_should_reject_invalid_color_value() {
 		$json = [
 			'itemType' => 'annotation',
-			'parentItem' => self::$attachmentKey,
+			'parentItem' => self::$pdfAttachmentKey,
 			'annotationType' => 'highlight',
 			'annotationText' => '',
 			'annotationSortIndex' => '00015|002431|00000',
@@ -565,5 +667,41 @@ class AnnotationTest extends APITests {
 		$this->assert400ForObject(
 			$response, "annotationColor must be a hex color (e.g., '#FF0000')", 0
 		);
+	}
+	
+	
+	public function test_should_trigger_upgrade_error_for_epub_annotation_on_old_clients() {
+		$json = [
+			'itemType' => 'annotation',
+			'parentItem' => self::$epubAttachmentKey,
+			'annotationType' => 'highlight',
+			'annotationText' => 'foo',
+			'annotationSortIndex' => '00050|00013029',
+			'annotationColor' => '#ff8c19',
+			'annotationPosition' => json_encode([
+				"type" => 'FragmentSelector',
+				"conformsTo" => 'http://www.idpf.org/epub/linking/cfi/epub-cfi.html',
+				"value" => 'epubcfi(/6/4!/4/2[pg-header]/2[pg-header-heading],/1:4,/1:11)'
+			])
+		];
+		$response = API::userPost(
+			self::$config['userID'],
+			"items",
+			json_encode([$json]),
+			["Content-Type: application/json"]
+		);
+		$this->assert200ForObject($response);
+		$json = API::getJSONFromResponse($response)['successful'][0];
+		$annotationKey = $json['key'];
+		
+		API::useSchemaVersion(28);
+		$response = API::userGet(
+			self::$config['userID'],
+			"items/$annotationKey"
+		);
+		$json = API::getJSONFromResponse($response);
+		$jsonData = $json['data'];
+		$this->assertArrayHasKey('invalidProp', $jsonData);
+		API::resetSchemaVersion();
 	}
 }

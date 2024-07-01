@@ -261,15 +261,10 @@ class Zotero_DB {
 			$config['username'] = $auth['user'];
 			$config['password'] = $auth['pass'];
 			
-			// Don't time out during long maintenance operations. It's not clear which of these
-			// are necessary. mysqlnd.net_read_timeout=3600 is also necessary, and as of 7.0.21
-			// isn't working via ini_set (even though it's supposed to), so it has to be set with
-			// php -d in the migration script).
+			// Don't time out during long maintenance operations. mysqlnd.net_read_timeout=3600 is
+			// also necessary, and as of 7.0.21 isn't working via ini_set (even though it's supposed
+			// to), so it has to be set with php -d in the migration script).
 			$timeout = 3600;
-			$info['driver_options'] = [
-				'MYSQL_OPT_READ_TIMEOUT' => $timeout,
-				'MYSQL_OPT_WRITE_TIMEOUT' => $timeout
-			];
 			ini_set('default_socket_timeout', $timeout);
 		}
 		
@@ -938,7 +933,13 @@ class Zotero_DB {
 			
 			$mystmt = $stmt->getDriverStatement();
 			
-			return (self::getIntegerColumns($mystmt) && strlen($row[0]) < 10) ? (is_null($row[0]) ? null : (int) $row[0]) : $row[0];
+			if (is_null($row[0])) {
+				return null;
+			}
+			if (self::getIntegerColumns($mystmt) && strlen($row[0]) < 10) {
+				return (int) $row[0];
+			}
+			return $row[0];
 		}
 		catch (Exception $e) {
 			self::error($e, $stmt->sql, $params, $stmt->shardID);
@@ -1379,7 +1380,7 @@ class Zotero_Cache_DB extends Zotero_DB {
 
 
 class Zotero_Admin_DB extends Zotero_DB {
-	protected $db = 'master';
+	protected $db = 'admin';
 	
 	protected function __construct() {
 		parent::__construct();

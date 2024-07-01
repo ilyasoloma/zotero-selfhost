@@ -439,4 +439,3 @@ class KeysController extends ApiController {
 		}
 	}
 }
-

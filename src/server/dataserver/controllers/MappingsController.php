@@ -171,6 +171,8 @@ class MappingsController extends ApiController {
 				case 'note':
 				case 'image':
 				case 'ink':
+				case 'underline':
+				case 'text':
 					break;
 				
 				default:
@@ -252,7 +254,7 @@ class MappingsController extends ApiController {
 			$json['parentItem'] = '';
 			$json['annotationType'] = $annotationType;
 			
-			if ($annotationType == 'highlight') {
+			if ($annotationType == 'highlight' || $annotationType == 'underline') {
 				$json['annotationText'] = '';
 			}
 			

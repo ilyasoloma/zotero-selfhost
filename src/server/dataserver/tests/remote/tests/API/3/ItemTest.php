@@ -340,95 +340,6 @@ class ItemTests extends APITests {
 	}
 	
 	
-	public function testDateAddedExistingItem() {
-		// In case this is ever extended to other objects
-		$objectType = 'item';
-		$objectTypePlural = API::getPluralObjectType($objectType);
-		
-		switch ($objectType) {
-		case 'item':
-			$itemData = [
-				"title" => "Test",
-				"dateAdded" => "2017-03-12T02:48:54Z"
-			];
-			$data = API::createItem("videoRecording", $itemData, $this, 'jsonData');
-			break;
-		}
-		
-		$objectKey = $data['key'];
-		$originalDateAdded = $data['dateAdded'];
-		
-		// If date added hasn't changed, allow
-		$data['title'] = "Test 2";
-		$data['dateAdded'] = $originalDateAdded;
-		$response = API::userPut(
-			self::$config['userID'],
-			"$objectTypePlural/$objectKey",
-			json_encode($data)
-		);
-		$this->assert204($response);
-		$data = API::getItem($objectKey, $this, 'json')['data'];
-		
-		// And even if it's a different timezone
-		$date = \DateTime::createFromFormat(\DateTime::ISO8601, $originalDateAdded);
-		$date->setTimezone(new \DateTimeZone('America/New_York'));
-		$newDateAdded = $date->format('c');
-		
-		$data['title'] = "Test 3";
-		$data['dateAdded'] = $newDateAdded;
-		$response = API::userPut(
-			self::$config['userID'],
-			"$objectTypePlural/$objectKey",
-			json_encode($data)
-		);
-		$this->assert204($response);
-		$data = API::getItem($objectKey, $this, 'json')['data'];
-		
-		// But with a changed dateAdded, disallow
-		$newDateAdded = "2017-04-01T00:00:00Z";
-		$data['title'] = "Test 4";
-		$data['dateAdded'] = $newDateAdded;
-		$response = API::userPut(
-			self::$config['userID'],
-			"$objectTypePlural/$objectKey",
-			json_encode($data)
-		);
-		$this->assert400($response, "'dateAdded' cannot be modified for existing $objectTypePlural");
-		
-		// Unless it's exactly one hour off, because there's a DST bug we haven't fixed
-		// https://github.com/zotero/zotero/issues/1201
-		$newDateAdded = "2017-03-12T01:48:54Z";
-		$data['dateAdded'] = $newDateAdded;
-		$response = API::userPut(
-			self::$config['userID'],
-			"$objectTypePlural/$objectKey",
-			json_encode($data)
-		);
-		$this->assert204($response);
-		$data = API::getItem($objectKey, $this, 'json')['data'];
-		// But the value shouldn't have actually changed
-		$this->assertEquals($originalDateAdded, $data['dateAdded']);
-		
-		// Allow if the there's a merge-tracking relation
-		$newDateAdded = "2019-04-13T01:48:54Z";
-		$data['dateAdded'] = $newDateAdded;
-		$data['relations'] = [
-			"dc:replaces" => [
-				"http://zotero.org/users/" . self::$config['userID'] . "/items/AAAAAAAA"
-			]
-		];
-		$response = API::userPut(
-			self::$config['userID'],
-			"$objectTypePlural/$objectKey",
-			json_encode($data)
-		);
-		$this->assert204($response);
-		$data = API::getItem($objectKey, $this, 'json')['data'];
-		// The value should have changed
-		$this->assertEquals($newDateAdded, $data['dateAdded']);
-	}
-	
-	
 	public function testDateModified() {
 		// In case this is ever extended to other objects
 		$objectType = 'item';
@@ -1210,7 +1121,29 @@ class ItemTests extends APITests {
 		$imageKey = API::createAttachmentItem(
 			'embedded_image', ['contentType' => 'image/png'], $noteKey, $this, 'key'
 		);
-		// Keys tested in AnnotationTest
+	}
+	
+	
+	public function test_num_children_and_children_on_note_with_embedded_image_attachment() {
+		$noteKey = API::createNoteItem("Test", null, $this, 'key');
+		$imageKey = API::createAttachmentItem(
+			'embedded_image', ['contentType' => 'image/png'], $noteKey, $this, 'key'
+		);
+		$response = API::userGet(
+			self::$config['userID'],
+			"items/$noteKey"
+		);
+		$json = API::getJSONFromResponse($response);
+		$this->assertEquals(1, $json['meta']['numChildren']);
+		
+		$response = API::userGet(
+			self::$config['userID'],
+			"items/$noteKey/children"
+		);
+		$this->assert200($response);
+		$json = API::getJSONFromResponse($response);
+		$this->assertCount(1, $json);
+		$this->assertEquals($imageKey, $json[0]['key']);
 	}
 	
 	
@@ -1553,21 +1486,38 @@ class ItemTests extends APITests {
 	public function testDateModifiedChangeOnEdit() {
 		$json = API::createAttachmentItem("linked_file", [], false, $this, 'jsonData');
 		$modified = $json['dateModified'];
-		unset($json['dateModified']);
-		$json['note'] = "Test";
 		
-		sleep(1);
-		
-		$response = API::userPut(
-			self::$config['userID'],
-			"items/{$json['key']}",
-			json_encode($json),
-			array("If-Unmodified-Since-Version: " . $json['version'])
-		);
-		$this->assert204($response);
-		
-		$json = API::getItem($json['key'], $this, 'json')['data'];
-		$this->assertNotEquals($modified, $json['dateModified']);
+		for ($i = 1; $i <= 2; $i++) {
+			sleep(1);
+			unset($json['dateModified']);
+			
+			switch ($i) {
+				case 1:
+					$json['note'] = "Test";
+					break;
+				
+				case 2:
+					$json['tags'] = [
+						[
+							'tag' => 'A'
+						]
+					];
+					break;
+			}
+			
+			
+			$response = API::userPut(
+				self::$config['userID'],
+				"items/{$json['key']}",
+				json_encode($json),
+				["If-Unmodified-Since-Version: " . $json['version']]
+			);
+			$this->assert204($response);
+			
+			$json = API::getItem($json['key'], $this, 'json')['data'];
+			$this->assertNotEquals($modified, $json['dateModified'], "Date Modified not changed on loop $i");
+			$modified = $json['dateModified'];
+		}
 	}
 	
 	/**
@@ -1579,8 +1529,14 @@ class ItemTests extends APITests {
 		$json = API::createItem('book', false, $this, 'jsonData');
 		$modified = $json['dateModified'];
 		
-		for ($i = 1; $i <= 5; $i++) {
+		for ($i = 1; $i <= 4; $i++) {
 			sleep(1);
+			
+			// For all tests after the first one, unset Date Modified, which would normally cause
+			// it to be updated
+			if ($i > 1) {
+				unset($json['dateModified']);
+			}
 			
 			switch ($i) {
 			case 1:
@@ -1588,9 +1544,6 @@ class ItemTests extends APITests {
 				break;
 			
 			case 2:
-				// For all subsequent tests, unset field, which would normally cause it to be updated
-				unset($json['dateModified']);
-				
 				$json['collections'] = [$collectionKey];
 				break;
 			
@@ -1600,14 +1553,6 @@ class ItemTests extends APITests {
 			
 			case 4:
 				$json['deleted'] = false;
-				break;
-			
-			case 5:
-				$json['tags'] = [
-					[
-						'tag' => 'A'
-					]
-				];
 				break;
 			}
 			
@@ -1837,7 +1782,7 @@ class ItemTests extends APITests {
 		$json = API::createItem('book', false, $this, 'json');
 		$this->assertEquals('user', $json['library']['type']);
 		$this->assertEquals(self::$config['userID'], $json['library']['id']);
-		$this->assertEquals(self::$config['username'], $json['library']['name']);
+		$this->assertEquals(self::$config['displayName'], $json['library']['name']);
 		$this->assertRegExp('%^https?://[^/]+/' . self::$config['username'] . '$%', $json['library']['links']['alternate']['href']);
 		$this->assertEquals('text/html', $json['library']['links']['alternate']['type']);
 	}
@@ -1909,6 +1854,41 @@ class ItemTests extends APITests {
 		);
 		$xml = API::getXMLFromResponse($response);
 		$this->assertEquals(2, (int) array_get_first($xml->xpath('/atom:entry/zapi:numChildren')));
+	}
+	
+	
+	public function test_num_children_and_children_on_attachment_with_annotation() {
+		$key = API::createItem("book", false, $this, 'key');
+		$attachmentKey = API::createAttachmentItem(
+			"imported_url",
+			[
+				'contentType' => 'application/pdf',
+				'title' => 'bbb'
+			],
+			$key, $this, 'key'
+		);
+		$annotationKey = API::createAnnotationItem(
+			'image',
+			['annotationComment' => 'ccc'],
+			$attachmentKey,
+			$this,
+			'key'
+		);
+		$response = API::userGet(
+			self::$config['userID'],
+			"items/$attachmentKey"
+		);
+		$json = API::getJSONFromResponse($response);
+		$this->assertEquals(1, $json['meta']['numChildren']);
+		
+		$response = API::userGet(
+			self::$config['userID'],
+			"items/$attachmentKey/children"
+		);
+		$this->assert200($response);
+		$json = API::getJSONFromResponse($response);
+		$this->assertCount(1, $json);
+		$this->assertEquals('ccc', $json[0]['data']['annotationComment']);
 	}
 	
 	
@@ -2969,7 +2949,7 @@ class ItemTests extends APITests {
 			"items/{$jsonData['key']}",
 			json_encode($json)
 		);
-		$this->assert400($response, "Parent item of annotation must be a PDF attachment");
+		$this->assert400($response, "Parent item of highlight annotation must be a PDF attachment");
 		
 		// Linked-URL attachment
 		$json = [
@@ -2981,7 +2961,7 @@ class ItemTests extends APITests {
 			"items/{$jsonData['key']}",
 			json_encode($json)
 		);
-		$this->assert400($response, "Parent item of annotation must be a PDF attachment");
+		$this->assert400($response, "Parent item of highlight annotation must be a PDF attachment");
 	}
 	
 	

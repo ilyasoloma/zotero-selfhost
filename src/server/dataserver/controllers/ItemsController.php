@@ -760,12 +760,26 @@ class ItemsController extends ApiController {
 				$this->e404();
 			}
 			
+			// Return 404 to non-members for files in PublicClosed groups
+			// TODO: Move this into Permissions
+			$type = Zotero_Libraries::getType($this->objectLibraryID);
+			if ($type == 'group') {
+				$groupID = Zotero_Groups::getGroupIDFromLibraryID($this->objectLibraryID);
+				$group = Zotero_Groups::get($groupID);
+				if ($group->type == 'PublicClosed'
+						&& !$this->permissions->canAccess($this->objectLibraryID, 'files')) {
+					$this->e404();
+				}
+			}
+			
 			// File viewing
 			if ($this->fileView || $this->fileViewURL) {
+				
 				$url = Zotero_Attachments::getTemporaryURL($item);
 				if (!$url) {
 					$this->e500();
 				}
+				
 				if ($this->fileViewURL) {
 					header('Content-Type: text/plain');
 					echo $url . "\n";
@@ -908,13 +922,13 @@ class ItemsController extends ApiController {
 					$this->e400("Files above 4 GB are not currently supported");
 				}
 				
-				$info->contentType = isset($_REQUEST['contentType']) ? $_REQUEST['contentType'] : null;
-				if (!preg_match("/^[a-zA-Z0-9\-\/]+$/", $info->contentType)) {
+				$info->contentType = $_REQUEST['contentType'] ?? null;
+				if ($info->contentType && !preg_match("/^[a-zA-Z0-9\-\/]+$/", $info->contentType)) {
 					$info->contentType = null;
 				}
 				
-				$info->charset = isset($_REQUEST['charset']) ? $_REQUEST['charset'] : null;
-				if (!preg_match("/^[a-zA-Z0-9\-]+$/", $info->charset)) {
+				$info->charset = $_REQUEST['charset'] ?? null;
+				if ($info->charset && !preg_match("/^[a-zA-Z0-9\-]+$/", $info->charset)) {
 					$info->charset = null;
 				}
 				
@@ -1163,8 +1177,7 @@ class ItemsController extends ApiController {
 				}
 				
 				Zotero_Storage::updateFileItemInfo($item, $storageFileID, $info, true);
-				
-				Zotero_Storage::logUpload($this->userID, $item, $uploadKey, IPAddress::getIP());
+				Zotero_Storage::markUploadAsCompleted($uploadKey);
 				
 				Zotero_DB::commit();
 				
@@ -1177,4 +1190,3 @@ class ItemsController extends ApiController {
 		exit;
 	}
 }
-

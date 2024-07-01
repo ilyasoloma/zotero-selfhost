@@ -1,2 +1,0 @@
-import type { DragDropManager, BackendFactory } from './interfaces.js';
-export declare function createDragDropManager(backendFactory: BackendFactory, globalContext?: unknown, backendOptions?: unknown, debugMode?: boolean): DragDropManager;

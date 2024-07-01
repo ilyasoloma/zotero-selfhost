@@ -115,7 +115,7 @@ class Zotero_Storage {
 		$cmd = $s3Client->getCommand('GetObject', [
 			'Bucket' => Z_CONFIG::$S3_BUCKET,
 			'Key' => $key,
-			'ResponseContentType' => $contentType
+			'ResponseContentType' => $info['zip'] ? 'application/zip' : $contentType
 		]);
 		return (string) $s3Client->createPresignedRequest($cmd, "+$ttl seconds")->getUri();
 	}
@@ -256,7 +256,7 @@ class Zotero_Storage {
 	
 	
 	public static function getUploadBaseURL() {
-		return "http://" . Z_CONFIG::$S3_ENDPOINT . "/" . Z_CONFIG::$S3_BUCKET . "/";
+		return "https://" . Z_CONFIG::$S3_BUCKET . ".s3.amazonaws.com/";
 	}
 	
 	
@@ -564,16 +564,13 @@ class Zotero_Storage {
 		$item->save();
 		
 		// Note: We set the size on the shard so that usage queries are instantaneous
-		$sql = "INSERT INTO storageFileItems (storageFileID, itemID, mtime, size) VALUES (?,?,?,?)
-				ON DUPLICATE KEY UPDATE storageFileID=?, mtime=?, size=?";
+		$sql = "INSERT INTO storageFileItems (storageFileID, itemID, mtime, size) VALUES (?,?,?,?) AS new
+				ON DUPLICATE KEY UPDATE storageFileID=new.storageFileID, mtime=new.mtime, size=new.size";
 		Zotero_DB::query(
 			$sql,
 			[
 				$storageFileID,
 				$item->id,
-				$info->mtime,
-				$info->size,
-				$storageFileID,
 				$info->mtime,
 				$info->size
 			],
@@ -642,8 +639,8 @@ class Zotero_Storage {
 				. "Content-Disposition: form-data; name=\"$key\"\r\n\r\n"
 				. $val . "\r\n";
 		}
-		//$prefix .= "--$boundary\r\nContent-Disposition: form-data; name=\"file\"\r\n\r\n";
-		$prefix .= "--$boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"" . $info->filename ."\"\r\n\r\n";
+		$prefix .= "--$boundary\r\nContent-Disposition: form-data; name=\"file\"\r\n\r\n";
+		
 		// Suffix
 		$suffix = "\r\n--$boundary--";
 		
@@ -840,7 +837,7 @@ class Zotero_Storage {
 	
 	public static function getInstitutionalUserQuota($userID) {
 		// TODO: config
-		$dev = Z_ENV_TESTING_SITE ? "_test" : "";
+		$dev = Z_ENV_TESTING_SITE ? "_dev" : "";
 		$databaseName = "zotero_www{$dev}";
 		
 		// Get maximum institutional quota by e-mail domain
@@ -907,19 +904,20 @@ class Zotero_Storage {
 		return $quota;
 	}
 	
-	public static function getUserUsage($userID, $unit = 'b') {
+	public static function getUserUsage($userID, $unit = 'b', $uncached = false) {
 		$cacheKey = "userStorageUsageBytes_" . $userID;
-		$usage = Z_Core::$MC->get($cacheKey);
-		if ($usage) {
-			$usage = self::usageToUnit($usage, $unit);
-			return $usage;
+		if (!$uncached) {
+			$usage = Z_Core::$MC->get($cacheKey);
+			if ($usage) {
+				$usage = self::usageToUnit($usage, $unit);
+				return $usage;
+			}
 		}
 		
 		$usage = [];
 		$libraryID = Zotero_Users::getLibraryIDFromUserID($userID);
 		
-		$sql = "SELECT SUM(size) AS bytes FROM storageFileItems "
-				. "JOIN items USING (itemID) WHERE libraryID=?";
+		$sql = "SELECT storageUsage FROM shardLibraries WHERE libraryID=?";
 		$libraryBytes = Zotero_DB::valueQuery($sql, $libraryID, Zotero_Shards::getByLibraryID($libraryID));
 		$usage['library'] = $libraryBytes;
 		
@@ -931,24 +929,17 @@ class Zotero_Storage {
 			$shardIDs = Zotero_Groups::getUserGroupShards($userID);
 			
 			foreach ($shardIDs as $shardID) {
-				$sql = "SELECT libraryID, SUM(size) AS `bytes` FROM storageFileItems
-						JOIN items I USING (itemID)
-						WHERE libraryID IN
-						(" . implode(', ', array_fill(0, sizeOf($ownedLibraries), '?')) . ")
-						GROUP BY libraryID WITH ROLLUP";
+				$sql = "SELECT libraryID, storageUsage AS `bytes` FROM shardLibraries
+					WHERE libraryID IN
+					(" . implode(', ', array_fill(0, sizeOf($ownedLibraries), '?')) . ")";
 				$libraries = Zotero_DB::query($sql, $ownedLibraries, $shardID);
 				if ($libraries) {
 					foreach ($libraries as $library) {
-						if ($library['libraryID']) {
-							$usage['groups'][] = array(
-								'id' => Zotero_Groups::getGroupIDFromLibraryID($library['libraryID']),
-								'usage' => $library['bytes']
-							);
-						}
-						// ROLLUP row
-						else {
-							$groupBytes += $library['bytes'];
-						}
+						$usage['groups'][] = [
+							'id' => Zotero_Groups::getGroupIDFromLibraryID($library['libraryID']),
+							'usage' => $library['bytes']
+						];
+						$groupBytes += $library['bytes'];
 					}
 				}
 			}
@@ -956,7 +947,7 @@ class Zotero_Storage {
 		
 		$usage['total'] = $libraryBytes + $groupBytes;
 		
-		Z_Core::$MC->set($cacheKey, $usage, 600);
+		Z_Core::$MC->set($cacheKey, $usage, 1200);
 		
 		$usage = self::usageToUnit($usage, $unit);
 		return $usage;
@@ -993,9 +984,9 @@ class Zotero_Storage {
 		return $usage;
 	}
 	
-	/*
+	
 	private static function getHash($stringToSign) {
 		return base64_encode(hash_hmac('sha1', $stringToSign, Z_CONFIG::$AWS_SECRET_KEY, true));
-	}*/
+	}
 }
 ?>

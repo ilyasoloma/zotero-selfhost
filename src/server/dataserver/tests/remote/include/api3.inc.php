@@ -63,7 +63,7 @@ class API3 {
 	}
 	
 	
-	public static function createGroup($fields) {
+	public static function createGroup($fields, $returnFormat='id') {
 		$xml = new \SimpleXMLElement('<group/>');
 		$xml['owner'] = $fields['owner'];
 		$xml['name'] = $fields['name'] ?? "Test Group " . uniqid();
@@ -89,9 +89,31 @@ class API3 {
 			echo $response->getBody();
 			throw new Exception("Unexpected response code " . $response->getStatus());
 		}
+		
 		$url = $response->getHeader('Location');
 		preg_match('/[0-9]+$/', $url, $matches);
-		return (int) $matches[0];
+		$groupID = (int) $matches[0];
+		
+		// Add members
+		if (!empty($fields['members'])) {
+			$xml = '';
+			foreach ($fields['members'] as $member) {
+				$xml .= '<user id="' . $member . '" role="member"/>';
+			}
+			$usersResponse = self::superPost("groups/$groupID/users", $xml);
+			if ($usersResponse->getStatus() != 200) {
+				echo $usersResponse->getBody();
+				throw new Exception("Unexpected response code " . $usersResponse->getStatus());
+			}
+		}
+		
+		if ($returnFormat == 'response') {
+			return $response;
+		}
+		if ($returnFormat == 'id') {
+			return $groupID;
+		}
+		throw new Exception("Unknown response format '$responseFormat'");
 	}
 	
 	
@@ -306,6 +328,9 @@ class API3 {
 		$json->parentItem = $parentKey;
 		if ($annotationType == 'highlight') {
 			$json->annotationText = 'This is highlighted text.';
+		}
+		if (isset($data['annotationComment'])) {
+			$json->annotationComment = $data['annotationComment'];
 		}
 		$json->annotationColor = '#ff8c19';
 		$json->annotationSortIndex = '00015|002431|00000';

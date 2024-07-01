@@ -1589,6 +1589,19 @@ class FileTests extends APITests {
 		$this->assertArrayHasKey("exists", $json);
 		$version = $response->getHeader("Last-Modified-Version");
 		$this->assertGreaterThan($newVersion, $version);
+		
+		// Verify file on S3
+		$response = API::userGet(
+			self::$config['userID'],
+			"items/$key/file"
+		);
+		$this->assert302($response);
+		$location = $response->getHeader("Location");
+		
+		$response = HTTP::get($location);
+		$this->assert200($response);
+		// S3 should return ZIP content type
+		$this->assertEquals('application/zip', $response->getHeader("Content-Type"));
 	}
 	
 	
@@ -2309,6 +2322,101 @@ class FileTests extends APITests {
 			"items/$itemKey/file"
 		);
 		$this->assert404($response);
+	}
+	
+	
+	public function test_should_not_allow_anonymous_access_to_file_in_public_closed_group_with_library_reading_for_all() {
+		$file = "work/file";
+		$fileContents = self::getRandomUnicodeString();
+		$contentType = "text/html";
+		$charset = "utf-8";
+		file_put_contents($file, $fileContents);
+		$hash = md5_file($file);
+		$filename = "test_" . $fileContents;
+		$mtime = filemtime($file) * 1000;
+		$size = filesize($file);
+		
+		$groupID = API::createGroup([
+			'owner' => self::$config['userID'],
+			'type' => 'PublicClosed',
+			'name' => \Zotero_Utilities::randomString(14),
+			'libraryReading' => 'all',
+			'fileEditing' => 'members'
+		]);
+		
+		$parentKey = API::groupCreateItem($groupID, "book", false, $this, 'key');
+		$attachmentKey = API::groupCreateAttachmentItem(
+			$groupID,
+			"imported_file",
+			[
+				'contentType' => "text/plain",
+				'charset' => "utf-8"
+			],
+			$parentKey,
+			$this,
+			'key'
+		);
+		
+		// Get authorization
+		$response = API::groupPost(
+			$groupID,
+			"items/$attachmentKey/file",
+			$this->implodeParams([
+				"md5" => $hash,
+				"mtime" => $mtime,
+				"filename" => $filename,
+				"filesize" => $size
+			]),
+			[
+				"Content-Type: application/x-www-form-urlencoded",
+				"If-None-Match: *"
+			]
+		);
+		$this->assert200($response);
+		$json = API::getJSONFromResponse($response);
+		
+		self::$toDelete[] = "$hash";
+		
+		//
+		// Upload to S3
+		//
+		$response = HTTP::post(
+			$json['url'],
+			$json['prefix'] . $fileContents . $json['suffix'],
+			[
+				"Content-Type: {$json['contentType']}"
+			]
+		);
+		$this->assert201($response);
+		
+		// Successful registration
+		$response = API::groupPost(
+			$groupID,
+			"items/$attachmentKey/file",
+			"upload=" . $json['uploadKey'],
+			[
+				"Content-Type: application/x-www-form-urlencoded",
+				"If-None-Match: *"
+			]
+		);
+		$this->assert204($response);
+		
+		$response = API::get("groups/$groupID/items/$attachmentKey/file");
+		$this->assert302($response);
+		$response = API::get("groups/$groupID/items/$attachmentKey/file/view");
+		$this->assert302($response);
+		$response = API::get("groups/$groupID/items/$attachmentKey/file/view/url");
+		$this->assert200($response);
+		
+		API::useAPIKey("");
+		$response = API::get("groups/$groupID/items/$attachmentKey/file");
+		$this->assert404($response);
+		$response = API::get("groups/$groupID/items/$attachmentKey/file/view");
+		$this->assert404($response);
+		$response = API::get("groups/$groupID/items/$attachmentKey/file/view/url");
+		$this->assert404($response);
+		
+		API::deleteGroup($groupID);
 	}
 	
 	

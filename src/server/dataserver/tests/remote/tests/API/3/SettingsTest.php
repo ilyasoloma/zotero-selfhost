@@ -143,6 +143,9 @@ class SettingsTests extends APITests {
 			],
 			"lastPageIndex_g1234567890_ABCD2345" => [
 				"value" => 123
+			],
+			"lastRead_g1234567890_ABCD2345" => [
+				"value" => 1674251397
 			]
 		];
 		$settingKeys = array_keys($json);
@@ -336,6 +339,41 @@ class SettingsTests extends APITests {
 		$this->assertNotNull($json);
 		$this->assertEquals($newValue, $json['value']);
 		$this->assertEquals($libraryVersion + 2, $json['version']);
+	}
+	
+	
+	public function test_should_add_zero_integer_value_for_lastPageIndex() {
+		$settingKey = "lastPageIndex_u_NJP24DAM";
+		$value = 0;
+		
+		$libraryVersion = API::getLibraryVersion();
+		
+		$json = [
+			"value" => $value
+		];
+		
+		// Create
+		$response = API::userPut(
+			self::$config['userID'],
+			"settings/$settingKey",
+			json_encode($json),
+			[
+				"Content-Type: application/json",
+				"If-Unmodified-Since-Version: 0"
+			]
+		);
+		$this->assert204($response);
+		
+		$response = API::userGet(
+			self::$config['userID'],
+			"settings/$settingKey"
+		);
+		$this->assert200($response);
+		$this->assertContentType("application/json", $response);
+		$json = json_decode($response->getBody(), true);
+		$this->assertNotNull($json);
+		$this->assertEquals($value, $json['value']);
+		$this->assertEquals($libraryVersion + 1, $json['version']);
 	}
 	
 	
@@ -626,7 +664,7 @@ class SettingsTests extends APITests {
 		$settingKey = "tagColors";
 		$value = array(
 			array(
-				"name" => $this->content = str_repeat("abcdefghij", 2501),
+				"name" => $this->content = str_repeat("abcdefghij", 3001),
 				"color" => "#990000"
 			)
 		);
@@ -642,11 +680,88 @@ class SettingsTests extends APITests {
 			json_encode($json),
 			array("Content-Type: application/json")
 		);
-		$this->assert400($response, "'value' cannot be longer than 25000 characters");
+		$this->assert400($response, "'value' cannot be longer than 30000 characters");
 	}
 	
 	
-	public function test_should_reject_lastPageLabel_in_group_library() {
+	public function test_lastPageIndex_should_accept_percentages_with_one_decimal_place() {
+		$json = [
+			"lastPageIndex_u_ABCD2345" => [
+				"value" => 12.2
+			]
+		];
+		$response = API::userPost(
+			self::$config['userID'],
+			"settings",
+			json_encode($json),
+			["Content-Type: application/json"]
+		);
+		$this->assert204($response);
+	}
+	
+	
+	public function test_lastPageIndex_should_accept_integers() {
+		$json = [
+			"lastPageIndex_u_ABCD2345" => [
+				"value" => 12
+			]
+		];
+		$response = API::userPost(
+			self::$config['userID'],
+			"settings",
+			json_encode($json),
+			["Content-Type: application/json"]
+		);
+		$this->assert204($response);
+	}
+	
+	
+	public function test_lastPageIndex_should_reject_percentages_below_0_or_above_100() {
+		$json = [
+			"lastPageIndex_u_ABCD2345" => [
+				"value" => -1.2
+			]
+		];
+		$response = API::userPost(
+			self::$config['userID'],
+			"settings",
+			json_encode($json),
+			["Content-Type: application/json"]
+		);
+		$this->assert400($response);
+		
+		$json = [
+			"lastPageIndex_u_ABCD2345" => [
+				"value" => 100.1
+			]
+		];
+		$response = API::userPost(
+			self::$config['userID'],
+			"settings",
+			json_encode($json),
+			["Content-Type: application/json"]
+		);
+		$this->assert400($response);
+	}
+	
+	
+	public function test_lastPageIndex_should_reject_percentages_with_two_decimal_places() {
+		$json = [
+			"lastPageIndex_u_ABCD2345" => [
+				"value" => 12.23
+			]
+		];
+		$response = API::userPost(
+			self::$config['userID'],
+			"settings",
+			json_encode($json),
+			["Content-Type: application/json"]
+		);
+		$this->assert400($response);
+	}
+	
+	
+	public function test_should_reject_lastPageIndex_in_group_library() {
 		$settingKey = "lastPageIndex_g" . self::$config['ownedPrivateGroupID'] . "_ABCD2345";
 		$value = 1234;
 		

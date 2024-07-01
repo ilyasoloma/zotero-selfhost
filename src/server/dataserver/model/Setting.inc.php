@@ -73,7 +73,11 @@ class Zotero_Setting {
 		
 		$this->checkProperty($prop, $value);
 		
-		if ($this->$prop != $value) {
+		// If the existing field is an object or an array (e.g. [{"name", "value"}] for tagColors),
+		// use == operator to check if all fields within the arrays/objects match. 
+		// Otherwise, use === so that if $this->$prop is null and $value is 0, they do not count as equal.
+		$isObjectOrArray = is_array($this->$prop) || is_object($this->$prop);
+		if (($isObjectOrArray && $this->$prop != $value) || (!$isObjectOrArray && $this->$prop !== $value)) {
 			//Z_Core::debug("Setting property '$prop' has changed from '{$this->$prop}' to '$value'");
 			$this->changed = true;
 			$this->$prop = $value;
@@ -123,10 +127,12 @@ class Zotero_Setting {
 		}
 		
 		// Only allow lastPageIndex in user libraries
-		if (strpos($this->name, 'lastPageIndex_') === 0) {
+		if (strpos($this->name, 'lastPageIndex_') === 0
+				|| strpos($this->name, 'lastRead_') === 0) {
 			$libraryType = Zotero_Libraries::getType($this->libraryID);
 			if ($libraryType != 'user') {
-				throw new Exception("lastPageIndex can only be set in user library", Z_ERROR_INVALID_INPUT);
+				$name = explode('_', $this->name)[0];
+				throw new Exception("$name can only be set in user library", Z_ERROR_INVALID_INPUT);
 			}
 		}
 		

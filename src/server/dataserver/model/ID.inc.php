@@ -126,4 +126,3 @@ class Zotero_ID {
 		return self::$lastMax[$table] = Zotero_DB::valueQuery($sql);
 	}
 }
-

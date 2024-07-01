@@ -1227,7 +1227,7 @@ class Zotero_Items {
 			}
 			
 			$val = $item->getField('date', true, true, true);
-			if ($val !== '') {
+			if (!is_null($val) && $val !== '') {
 				// TODO: Make sure all stored values are multipart strings
 				if (!Zotero_Date::isMultipart($val)) {
 					$val = Zotero_Date::strToMultipart($val);
@@ -1676,6 +1676,11 @@ class Zotero_Items {
 			$item->setField("itemTypeID", Zotero_ItemTypes::getID($json->itemType));
 		}
 		
+		// And parentKey, which has to be set for getSource() to be available for other properties
+		if (isset($json->parentItem)) {
+			$item->setSourceKey($json->parentItem);
+		}
+		
 		$dateModifiedProvided = false;
 		// APIv2 and below
 		$changedDateModified = false;
@@ -1690,15 +1695,12 @@ class Zotero_Items {
 				case 'key':
 				case 'version':
 				case 'itemKey':
+				case 'parentItem':
 				case 'itemVersion':
 				case 'itemType':
 				case 'deleted':
 				case 'inPublications':
 					continue 2;
-				
-				case 'parentItem':
-					$item->setSourceKey($val);
-					break;
 				
 				case 'creators':
 					if (!$val && !$item->numCreators()) {
@@ -1891,7 +1893,7 @@ class Zotero_Items {
 		// Skip "Date Modified" update if only certain fields were updated (e.g., collections)
 		$skipDateModifiedUpdate = $dateModifiedProvided || !sizeOf(array_diff(
 			$item->getChanged(),
-			['collections', 'deleted', 'inPublications', 'relations', 'tags']
+			['collections', 'deleted', 'inPublications', 'relations']
 		));
 		
 		if ($item->hasChanged() && !$skipDateModifiedUpdate
@@ -2059,8 +2061,18 @@ class Zotero_Items {
 					if ($apiVersion < 2) {
 						throw new Exception("Invalid property '$key'", Z_ERROR_INVALID_INPUT);
 					}
-					if (!Zotero_ID::isValidKey($val) && $val !== false) {
-						throw new Exception("'$key' must be a valid item key or false", Z_ERROR_INVALID_INPUT);
+					if ($val !== false) {
+						if (!Zotero_ID::isValidKey($val)) {
+							throw new Exception("'$key' must be a valid item key or false", Z_ERROR_INVALID_INPUT);
+						}
+						// Make sure 'key' != 'parentItem'
+						if (isset($json->key) && $val == $json->key) {
+							// Keep in sync with Zotero_Errors::parseException
+							throw new Exception(
+								"Item $libraryID/$val cannot be a child of itself",
+								Z_ERROR_ITEM_PARENT_SET_TO_SELF
+							);
+						}
 					}
 					break;
 				
@@ -2354,7 +2366,7 @@ class Zotero_Items {
 						throw new Exception("Cannot change attachment linkMode", Z_ERROR_INVALID_INPUT);
 					}
 					break;
-				
+
 				case 'contentType':
 				case 'charset':
 				case 'filename':
@@ -2436,10 +2448,11 @@ class Zotero_Items {
 					if ($itemType != 'annotation') {
 						throw new Exception("'$key' is valid only for annotation items", Z_ERROR_INVALID_INPUT);
 					}
+					$itemOrUpdate = $isNew ? $json : $item;
 					if ($key == 'annotationText'
-							&& ($isNew ? $json->annotationType != 'highlight' : $item->annotationType != 'highlight')) {
+							&& (!in_array($itemOrUpdate->annotationType, ['highlight', 'underline']))) {
 						throw new Exception(
-							"'$key' can only be set for highlight annotations",
+							"'$key' can only be set for highlight and underline annotations",
 							Z_ERROR_INVALID_INPUT
 						);
 					}
@@ -2457,33 +2470,6 @@ class Zotero_Items {
 					break;
 				
 				case 'dateAdded':
-					if (!Zotero_Date::isSQLDateTime($val) && !Zotero_Date::isISO8601($val)) {
-						throw new Exception("'$key' must be in ISO 8601 or UTC 'YYYY-MM-DD hh:mm:ss' format", Z_ERROR_INVALID_INPUT);
-					}
-					
-					if (!$isNew) {
-						// Convert ISO date to SQL date for equality comparison
-						if (Zotero_Date::isISO8601($val)) {
-							$val = Zotero_Date::iso8601ToSQL($val);
-						}
-						// Don't allow dateAdded to change
-						if ($val != $item->$key && empty($json->relations->{Zotero_Relations::$deletedItemPredicate})) {
-							// If passed dateAdded is exactly one hour or one day off, assume it's from
-							// a DST bug we haven't yet tracked down
-							// (https://github.com/zotero/zotero/issues/1201) and ignore it
-							$absTimeDiff = abs(strtotime($val) - strtotime($item->$key));
-							if ($absTimeDiff == 3600 || $absTimeDiff == 86400
-									// Allow for Quick Start Guide items from <=4.0
-									|| $item->key == 'ABCD2345' || $item->key == 'ABCD3456') {
-								$json->$key = $item->$key;
-							}
-							else {
-								throw new Exception("'$key' cannot be modified for existing items", Z_ERROR_INVALID_INPUT);
-							}
-						}
-					}
-					break;
-				
 				case 'dateModified':
 					if (!Zotero_Date::isSQLDateTime($val) && !Zotero_Date::isISO8601($val)) {
 						throw new Exception("'$key' must be in ISO 8601 or UTC 'YYYY-MM-DD hh:mm:ss' format ($val)", Z_ERROR_INVALID_INPUT);
@@ -2602,4 +2588,3 @@ class Zotero_Items {
 }
 
 Zotero_Items::init();
-

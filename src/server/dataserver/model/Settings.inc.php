@@ -30,7 +30,8 @@ class Zotero_Settings extends Zotero_ClassicDataObjects {
 	public static $allowedSettings = [
 		'feeds',
 		'tagColors',
-		'/^lastPageIndex_(u|g[0-9]+)_[A-Z0-9]{8}$/'
+		'/^lastPageIndex_(u|g[0-9]+)_[A-Z0-9]{8}$/',
+		'/^lastRead_(g[0-9]+)_[A-Z0-9]{8}$/'
 	];
 	
 	protected static $ZDO_object = 'setting';
@@ -228,9 +229,27 @@ class Zotero_Settings extends Zotero_ClassicDataObjects {
 			break;
 		
 		// Integer settings
-		case 'lastPageIndex':
+		case 'lastRead':
 			if (!is_integer($value)) {
 				throw new Exception("'value' must be an integer", Z_ERROR_INVALID_INPUT);
+			}
+			break;
+		
+		case 'lastPageIndex':
+			if (!is_integer($value) && !is_string($value) && !is_float($value)) {
+				throw new Exception("'value' must be an integer, string, or decimal", Z_ERROR_INVALID_INPUT);
+			}
+			// Snapshots use 0 <= scrollYPercent <= 100 with 0-1 decimal places
+			if (is_float($value)) {
+				if ($value < 0 || $value > 100) {
+					throw new Exception("Decimal value must be between 0 and 100", Z_ERROR_INVALID_INPUT);
+				}
+				if ($value != round($value, 1)) {
+					throw new Exception("Decimal value must be to one decimal place", Z_ERROR_INVALID_INPUT);
+				}
+			}
+			if ($value === "") {
+				throw new Exception("'value' cannot be empty", Z_ERROR_INVALID_INPUT);
 			}
 			break;
 		
@@ -240,7 +259,7 @@ class Zotero_Settings extends Zotero_ClassicDataObjects {
 				throw new Exception("'value' be a string", Z_ERROR_INVALID_INPUT);
 			}
 			
-			if ($val === "") {
+			if ($value === "") {
 				throw new Exception("'value' cannot be empty", Z_ERROR_INVALID_INPUT);
 			}
 			break;

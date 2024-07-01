@@ -16,7 +16,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get -y install apt-utils
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y upgrade
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y install pkg-config re2c
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y install apache2 libapache2-mod-php7.2 sudo rsyslog wget mysql-client curl unzip
-RUN DEBIAN_FRONTEND=noninteractive apt-get -y install php7.2-cli php7.2-xml php7.2-mysql php7.2-pgsql php7.2-json php7.2-curl php7.2-mbstring php7.2-intl php7.2-redis php7.2-dev composer vim php-http-request2 php-memcached php-igbinary php-msgpack
+RUN DEBIAN_FRONTEND=noninteractive apt-get -y install php8.3-cli php8.3-xml php8.3-mysql php8.3-pgsql php8.3-json php8.3-curl php8.3-mbstring php8.3-intl php8.3-redis php8.3-dev composer vim nano php-http-request2 php-memcached php-igbinary php-msgpack
+
 #RUN DEBIAN_FRONTEND=noninteractive pecl channel-update pecl.php.net
 
 RUN sed -i 's/memory_limit = 128M/memory_limit = 1G/g' /etc/php/7.2/apache2/php.ini
